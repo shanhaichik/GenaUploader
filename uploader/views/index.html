@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+<head lang="en">
+    <meta charset="UTF-8">
+    <title>Uploader</title>
+    
+    <script src="http://code.jquery.com/jquery-1.11.3.min.js"></script>
+    <script src="/js/bundle.js"></script>
+</head>
+<body>
+	
+	<gena-upload>
+		<script>
+			GU.extend({
+				
+			})
+		</script>
+	</gena-upload>
+	
+
+
+	
+	<script>
+		
+		
+	/**
+* Generates unique ID
+* Complies with RFC 4122 version 4
+* http://stackoverflow.com/a/2117523/1091949
+* ID begins with letter "a" to be safe for HTML elem ID/name attr (can't start w/ number)
+*/
+/*ss.getUID = function() {
+    "use strict";
+
+    jslint bitwise: true
+    return 'axxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(uidReplace, function(c) {
+        var r = Math.random()*16|0, v = c == 'x' ? r : (r&0x3|0x8);
+        return v.toString(16);
+    });
+};
+	*/</script>
+</body>
+</html>

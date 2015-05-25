@@ -1,0 +1,25 @@
+{
+  "name": "Regen",
+  "description": "Simple framework",
+  "version": "0.0.1",
+  "private": true,
+  "main": "regen.js",
+  "scripts": {
+    "watch": "watchify ./public/dev/uploader.js -o public/js/bundle.js -v -d",
+    "browserify": "browserify ./public/dev/uploader.js | uglifyjs > public/js/uploader.min.js",
+    "build": "npm run browserify ",
+    "start": "npm run watch & nodemon server.js"
+  },
+  "dependencies": {
+    "body-parser": "^1.12.2",
+    "express": "4.9.7",
+    "stylus": "^0.50.0",
+    "swig": "^1.4.2"
+  },
+  "devDependencies": {
+    "browserify": "~6.0.3",
+    "nodemon": "^1.2.1",
+    "uglify-js": "~2.4.15",
+    "watchify": "~2.0.0"
+  }
+}
