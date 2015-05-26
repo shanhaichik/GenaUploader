@@ -17,21 +17,15 @@
 		oHas: function (obj, key) {return obj != null && hasOwn.call(obj, key); }
 	};
 	
-	_h.extend = function (first, second) {
-		for (var prop in second) {
-			if (hasOwn.call(second, prop)) {
-				first[prop] = second[prop];
-			}
-		}
-	};
-	
-	_h.getUID = function () {
-		/*jslint bitwise: true*/
-		return 'axxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-			var r = Math.random()*16|0, v = c == 'x' ? r : (r&0x3|0x8);
-			return v.toString(16);
-		});
-	};
+	_h.template = function (template, data) {
+        return template.replace(/\{{([\w\.]*)\}}/g, function (str, key) {
+            var keys = key.split("."), value = data[keys.shift()] || data;
+            $.each(keys, function () {
+                value = value[this];
+            });
+            return (value === null || value === undefined) ? "" : ($.isArray(value) ? value.join('') : value);
+        });
+    };
 	
 	// Detect browser
 	var _ua = navigator.userAgent.toLowerCase(),
@@ -71,6 +65,27 @@
             return support;
         }(window));
 	
+	/**
+	 * Temp store object
+	 */
+	var store = {
+		_store: [],
+		get: function(id){
+			return this._store.filter(function(el){
+				return el.id === id;
+			})[0];
+		},
+		set: function(component) {
+			this._store.push(component);
+		},
+		remove: function(id) {
+			
+		},
+		getAll: function(){
+			return this._store;
+		}
+	};
+	
 	
 	/**
 	 * Create XHR class
@@ -85,18 +100,43 @@
 	 *
 	 * @param options
 	 */
-	var GU = window.GU = function () {};
+	var GU = window.GU = function (input, id) {
+		this.options = store.get(id);
+		this.$file = input.find('input[type=file]');
+		
+		this.$file.attr({
+            id: id,         
+            disabled: this.options.disabled
+        });
+		// !?
+		if(_support.selectMultiple) {
+			this.$file.attr('multiple', this.options.multiple);
+		}
+		
+		// define queue props
+		this.counter = -1;
+		this.fileArr = [];
+		this.progress = false;
+		
+		// set event handler
+		this.$file.on('change.gfu', $.proxy(this.addFiles, this));
+	};
 	
 	/**
 	 * Define the static properties of Uploader
 	 */
-	_h.extend(GU, {
+	$.extend(GU, {
 		/**
 		 * Default values
 		 */
 		defaults: {
+			// id of component
+			id: null,
 			// Name of the file input
 			name: 'files',
+			
+			// Default label text
+			text: 'Загрузить файл',
 
 			// Whether selecting multiple files at once in allowed
 			multiple: true,
@@ -116,7 +156,7 @@
 			// Required field in the form (by default required)
 			required: true,
 
-			// Array of the accepted file types, ex. ['.jpg', '.jpeg', '.png'] (by default all types are accepted)
+			// Array of the accepted file types, ex. ['application/x-cd-image'] (by default all types are accepted)
 			acceptType: null,
 
 			// Array of the accepted file types, ex. ['.jpg', '.jpeg', '.png'] (by default all types are accepted)
@@ -146,19 +186,112 @@
 			// Error messages
 			errors: {
 				maxFiles: 'Превышенно колличесво файлов {{maxFiles}} возможных для загрузки!',
-				maxSize: 'Размер файла {{fileName}} превысил максимальный размер {{maxSize}}',
-				invalidType: 'Неверный тип файла {{fileName}}. Для загрузки разрешены следующие типы файлов: {{fileType}}',
-				invalidExtension: 'Неверное расширение файла {{fileName}}. Для загрузки разрешены следующие расширения файлов: {{fileExtension}}'
+				maxSize: 'Размер файла {{fileName}} превысил максимальный размер {{maxSize}} Mb',
+				invalidType: 'Неверный тип файла {{fileName}}. Для загрузки разрешены: {{fileType}}',
+				invalidExtension: 'Неверное расширение файла {{fileName}}. Разрешены следующие: {{fileExtension}}'
 			}
 		},
-		
-		extend: function(obj) {
+		// default templates
+		templates: {
+			input: ['<div class="gfu-wrap">',
+						'<label for="{{id}}" class="file-label"><span>{{label}}</span><input type="file" id="{{id}}"></label>',											'</div>'
+				   ].join(''),
 			
+			progress:['<div class="gfu-row"><div class="gfu-row-progress"></div></div>'].join(''),
+		
+			upload: ['<div class="upload">Загружен файл </div>'].join('')
+		},
+		// extend custom options from component
+		extend: function(obj) {
+			store.set($.extend({}, GU.defaults, obj));
 		}
 	});
 	
+	$.extend(GU.prototype, {
+		/*
+         * Add input files in upload queue
+         *
+         * @method addFiles
+         */
+		addFiles: function(e) {
+			// TODO удаление из очереди при сбросе
+			if(e.target.value === '') {
+				return;
+			}
+			
+			try {
+				this.validate(e.target.files);
+			}
+			catch(err){
+				console.log(err);
+				e.target.value = null;
+			}
+			
+			// add files in queue
+			
+			if(this.options.autoStart) {
+				// отправляем файлы
+			}
+		},
+		/*
+         * Validate files
+         *
+         * @method validate
+		 * @param files file object from input
+         */
+		validate: function(files) {
+			var fLength = files.length,
+				o = this.options;
+				
+			if(o.maxFiles !== null && (o.maxFiles < fLength || o.maxFiles == this.fileArr.length)) {
+				throw new Error(_h.template(o.errors.maxFiles, o.maxFiles));
+			}
+			
+			[].forEach.call(files, function(file) {
+				// validate size
+				if(o.maxSize !== null && ((file.size / 1024) / 1024 > o.maxSize)) { 
+					throw new Error(_h.template(o.errors.maxSize, {fileName: file.name, maxSize: o.maxSize.toString()}));
+				}
+				
+				// validate type
+				if(o.acceptExtension !== null) {
+					var ext = file.name.toLocaleLowerCase().split('.')[1];
+					if(!~o.acceptExtension.indexOf(ext)) {
+						var err = _h.template(o.errors.invalidExtension, {
+							fileName: file.name, 
+							fileExtension: o.acceptExtension.join(', ')
+						});
+						
+						throw new Error(err);
+					}
+				}
+				
+				// validate type
+				if(o.acceptType !== null && !~o.acceptType.indexOf(file.type)) {
+					var err = _h.template(o.errors.invalidType, {
+							fileName: file.name, 
+							fileType: o.acceptType.join(', ')
+						});
+						
+					throw new Error(err);
+				}
+			});
+		}
+	
+	});
 	
 	
-	//console.log(GU.defaults.multiple)
-
+	$(document).ready(function(){
+		var components = document.querySelectorAll('gena-upload');
+		
+		[].forEach.call(components, function(component) {
+			var input = $(_h.template(GU.templates.input, component.id));
+			
+			$(component).replaceWith(input);
+			if (!$.data(input, 'genaUploader')) {
+                $.data(input, 'genaUploader', new GU(input, component.id))
+            }
+		})
+	});
+	
 }(document, window, jQuery));

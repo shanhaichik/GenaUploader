@@ -4,40 +4,42 @@
     <meta charset="UTF-8">
     <title>Uploader</title>
     
+    <link  href="/css/index.css" rel="stylesheet"  media="all">
+    
     <script src="http://code.jquery.com/jquery-1.11.3.min.js"></script>
     <script src="/js/bundle.js"></script>
+    
 </head>
 <body>
 	
-	<gena-upload>
+	<gena-upload id="t1">
+		<template>
+			<div class="test">Какой-то текст</div>
+		</template>
+		
 		<script>
 			GU.extend({
+				id:'t1',
+				name: 'component1',
+				text: 'Добавить документы',
+				acceptExtension: ['jpg', 'txt','gif'],
+				acceptType: ['image/jpeg']
 				
 			})
 		</script>
 	</gena-upload>
 	
 
-
+	<gena-upload id="t2">
+		<script>
+			GU.extend({
+				id:'t2',
+				name: 'component2',
+				multiple: false,
+				maxSize:0
+			})
+		</script>
+	</gena-upload>
 	
-	<script>
-		
-		
-	/**
-* Generates unique ID
-* Complies with RFC 4122 version 4
-* http://stackoverflow.com/a/2117523/1091949
-* ID begins with letter "a" to be safe for HTML elem ID/name attr (can't start w/ number)
-*/
-/*ss.getUID = function() {
-    "use strict";
-
-    jslint bitwise: true
-    return 'axxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(uidReplace, function(c) {
-        var r = Math.random()*16|0, v = c == 'x' ? r : (r&0x3|0x8);
-        return v.toString(16);
-    });
-};
-	*/</script>
 </body>
 </html>
