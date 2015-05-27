@@ -4,6 +4,16 @@ var app = express();
 
 var config = require('./core/conf');
 
+var db = (function(){
+	var arr = [];
+	
+	for(var i = 3; i < 10000; i++) {
+		arr.push(i);
+	}
+	
+	return arr;
+})();
+
 // Configuration
 app.engine('html', swig.renderFile);
 
@@ -23,7 +33,7 @@ app.use(express.static(__dirname + '/public'));
 
 // index page
 app.get('/', function (req, res) {
-	res.render('index');
+	res.render('index',{db:db});
 });
 
 // upload page

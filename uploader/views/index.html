@@ -6,15 +6,21 @@
     
     <link  href="/css/index.css" rel="stylesheet"  media="all">
     
-    <script src="http://code.jquery.com/jquery-1.11.3.min.js"></script>
+    <script src="/js/jquery-1.11.3.min.js"></script>
     <script src="/js/bundle.js"></script>
     
 </head>
 <body>
 	
 	<gena-upload id="t1">
-		<template>
-			<div class="test">Какой-то текст</div>
+		<template data-rel="input">
+			<div class="gfu-wrap">
+				<ul>
+					<li class="gfu-text"></li>
+					<li><input type="file" id="{{id}}"></li>
+					<li>Немного импровизации!</li>
+				</ul>
+			</div>
 		</template>
 		
 		<script>
@@ -23,7 +29,8 @@
 				name: 'component1',
 				text: 'Добавить документы',
 				acceptExtension: ['jpg', 'txt','gif'],
-				acceptType: ['image/jpeg']
+				acceptType: ['image/jpeg'],
+				maxFiles: 3
 				
 			})
 		</script>
@@ -36,10 +43,11 @@
 				id:'t2',
 				name: 'component2',
 				multiple: false,
-				maxSize:0
+				maxFiles: 3
 			})
 		</script>
 	</gena-upload>
 	
+
 </body>
 </html>

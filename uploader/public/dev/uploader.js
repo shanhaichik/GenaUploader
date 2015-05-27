@@ -14,7 +14,7 @@
 		isFunction: function (x) {return toString.call(x) === '[object Function]'; },
 		isObject: function (x) {return typeof x === 'object' && x !== null; },
 		isArray: function (x) {return toString.call(x) === '[object Array]'; },
-		oHas: function (obj, key) {return obj != null && hasOwn.call(obj, key); }
+		oHas: function (obj, key) {return obj !== null && hasOwn.call(obj, key); }
 	};
 	
 	_h.template = function (template, data) {
@@ -49,11 +49,11 @@
 			opera_mobile: /opera mini|opera mobi/i.test(_ua),
 			opera_mini: /opera mini/i.test(_ua)
 		},
-		_support = (function(window) {
+		_support = (function (window) {
             var support = {};
 
             // Whether the browser supports uploading files with XMLHttpRequest
-            support.xhrUpload = !!window.FormData && !!window.XMLHttpRequest && 'upload' in new XMLHttpRequest();
+            support.xhrUpload = !!window.XMLHttpRequest && 'upload' in new XMLHttpRequest();
 
             // Whether the browser supports selecting multiple files at once
             support.selectMultiple = !!window.FileList && 'multiple' in document.createElement('input');
@@ -70,18 +70,16 @@
 	 */
 	var store = {
 		_store: [],
-		get: function(id){
-			return this._store.filter(function(el){
-				return el.id === id;
-			})[0];
+		get: function (id) {
+			return this._store[id];
 		},
-		set: function(component) {
-			this._store.push(component);
+		set: function (id, component) {
+			this._store[id] = component;
 		},
-		remove: function(id) {
+		remove: function (id) {
 			
 		},
-		getAll: function(){
+		getAll: function () {
 			return this._store;
 		}
 	};
@@ -94,27 +92,50 @@
 	 */
 	var XHR = function() {};
 		
+	$.extend(XHR.prototype, {
+		getXHR: function () {
+			if (_support.xhrUpload) {
+				return new XMLHttpRequest();
+			} else if (window.ActiveXObject) {
+				try {
+					return new ActiveXObject('Microsoft.XMLHTTP');
+				} catch (err) {
+					return false;
+				}
+			}
+		},
+		
+		getIframe: function() {}
+	});
 	
 	/**
 	 * Create Uploader class
 	 *
 	 * @param options
 	 */
-	var GU = window.GU = function (input, id) {
+	var GU = window.GU = function (row, id) {
+		this.$file = row.find('input[type=file]');
 		this.options = store.get(id);
-		this.$file = input.find('input[type=file]');
+		
+		if (!this.options) {
+			this.options = $.extend({}, GU.defaults);
+			this.options.id = id;
+		}
 		
 		this.$file.attr({
-            id: id,         
-            disabled: this.options.disabled
+            id: this.options.id,         
+            disabled: this.options.disabled,
+			name: this.options.name
         });
 		// !?
-		if(_support.selectMultiple) {
+		if (_support.selectMultiple) {
 			this.$file.attr('multiple', this.options.multiple);
 		}
 		
+		// set label text
+		row.find('.gfu-text').text(this.options.text);
+		
 		// define queue props
-		this.counter = -1;
 		this.fileArr = [];
 		this.progress = false;
 		
@@ -159,7 +180,7 @@
 			// Array of the accepted file types, ex. ['application/x-cd-image'] (by default all types are accepted)
 			acceptType: null,
 
-			// Array of the accepted file types, ex. ['.jpg', '.jpeg', '.png'] (by default all types are accepted)
+			// Array of the accepted file types, ex. ['jpg', 'jpeg', 'png'] (by default all types are accepted)
 			acceptExtension: null,
 
 			// Additional data to send with the files
@@ -169,10 +190,10 @@
 			headers: {},
 
 			// Upload success callback
-			success: function(){},
+			success: function () {},
 
 			// Upload fail callback
-			fail: function(){},
+			fail: function () {},
 
 			// The url to upload the files to
 			url: document.URL,
@@ -186,6 +207,7 @@
 			// Error messages
 			errors: {
 				maxFiles: 'Превышенно колличесво файлов {{maxFiles}} возможных для загрузки!',
+				maxFilesSelect: 'Выбрано {{fileCount}} файлов из {{maxFiles}} возможных',
 				maxSize: 'Размер файла {{fileName}} превысил максимальный размер {{maxSize}} Mb',
 				invalidType: 'Неверный тип файла {{fileName}}. Для загрузки разрешены: {{fileType}}',
 				invalidExtension: 'Неверное расширение файла {{fileName}}. Разрешены следующие: {{fileExtension}}'
@@ -194,16 +216,16 @@
 		// default templates
 		templates: {
 			input: ['<div class="gfu-wrap">',
-						'<label for="{{id}}" class="file-label"><span>{{label}}</span><input type="file" id="{{id}}"></label>',											'</div>'
+						'<label for="{{id}}" class="file-label"><span class="gfu-text"></span><input type="file" id="{{id}}"></label>',											'</div>'
 				   ].join(''),
 			
-			progress:['<div class="gfu-row"><div class="gfu-row-progress"></div></div>'].join(''),
+			progress: ['<div class="gfu-row"><div class="gfu-row-progress"></div></div>'].join(''),
 		
-			upload: ['<div class="upload">Загружен файл </div>'].join('')
+			success: ['<div class="upload">Загружен файл </div>'].join('')
 		},
 		// extend custom options from component
 		extend: function(obj) {
-			store.set($.extend({}, GU.defaults, obj));
+			store.set(obj.id, $.extend({}, GU.defaults, obj));
 		}
 	});
 	
@@ -213,24 +235,34 @@
          *
          * @method addFiles
          */
-		addFiles: function(e) {
+		addFiles: function (e) {
 			// TODO удаление из очереди при сбросе
-			if(e.target.value === '') {
+			if (e.target.value === '') {
 				return;
 			}
 			
+			var files = Array.prototype.slice.apply(e.target.files);
+			
 			try {
-				this.validate(e.target.files);
-			}
-			catch(err){
+				this.validate(files);
+			} catch (err) {
 				console.log(err);
 				e.target.value = null;
+				return;
 			}
 			
-			// add files in queue
+			this.fileArr = this.fileArr.concat(files);
+
+			if (this.fileArr.length === this.options.maxFiles) {
+				this.$file.prop('disabled', true);
+				// TODO стили блокировки для label
+			}
 			
-			if(this.options.autoStart) {
+			if (this.options.autoStart || !this.progress) { //!?
 				// отправляем файлы
+				// this.$file.prop('disabled', true);
+				// this.fileGoAway();
+				// e.target.value = null;
 			}
 		},
 		/*
@@ -241,22 +273,28 @@
          */
 		validate: function(files) {
 			var fLength = files.length,
-				o = this.options;
-				
-			if(o.maxFiles !== null && (o.maxFiles < fLength || o.maxFiles == this.fileArr.length)) {
+				o = this.options,
+				fCount = this.fileArr.length + fLength;
+			
+			if(o.maxFiles !== null && o.maxFiles < fLength) {
 				throw new Error(_h.template(o.errors.maxFiles, o.maxFiles));
+			}
+			
+			if(o.maxFiles !== null && o.maxFiles < fCount) {
+				var total = o.maxFiles - this.fileArr.length;
+				throw new Error(_h.template(o.errors.maxFilesSelect, {maxFiles:o.maxFiles, fileCount: total.toString()}));
 			}
 			
 			[].forEach.call(files, function(file) {
 				// validate size
-				if(o.maxSize !== null && ((file.size / 1024) / 1024 > o.maxSize)) { 
+				if (o.maxSize !== null && ((file.size / 1024) / 1024 > o.maxSize)) {
 					throw new Error(_h.template(o.errors.maxSize, {fileName: file.name, maxSize: o.maxSize.toString()}));
 				}
 				
 				// validate type
-				if(o.acceptExtension !== null) {
+				if (o.acceptExtension !== null) {
 					var ext = file.name.toLocaleLowerCase().split('.')[1];
-					if(!~o.acceptExtension.indexOf(ext)) {
+					if (!~o.acceptExtension.indexOf(ext)) {
 						var err = _h.template(o.errors.invalidExtension, {
 							fileName: file.name, 
 							fileExtension: o.acceptExtension.join(', ')
@@ -267,7 +305,7 @@
 				}
 				
 				// validate type
-				if(o.acceptType !== null && !~o.acceptType.indexOf(file.type)) {
+				if (o.acceptType !== null && !~o.acceptType.indexOf(file.type)) {
 					var err = _h.template(o.errors.invalidType, {
 							fileName: file.name, 
 							fileType: o.acceptType.join(', ')
@@ -276,22 +314,39 @@
 					throw new Error(err);
 				}
 			});
+		},
+		
+		/*
+         * Prepare and send files
+         *
+         * @method fileGoAway
+         */
+		fileGoAway: function () {
+		
 		}
-	
 	});
 	
 	
-	$(document).ready(function(){
+	$(document).ready(function () {
+		console.time('d');
 		var components = document.querySelectorAll('gena-upload');
 		
-		[].forEach.call(components, function(component) {
-			var input = $(_h.template(GU.templates.input, component.id));
+		[].forEach.call(components, function (component) {
+			var template = component.querySelectorAll('[data-rel="input"]');
+
+			template = _h.template(
+				template.length
+				? template[0].innerHTML
+				: GU.templates.input, component.id);
 			
-			$(component).replaceWith(input);
-			if (!$.data(input, 'genaUploader')) {
-                $.data(input, 'genaUploader', new GU(input, component.id))
-            }
-		})
+			template = $(template);
+			
+			$(component).replaceWith(template);
+			$.data(template, 'genaUploader', new GU(template, component.id));
+			
+			template = null;
+		});
+		console.timeEnd('d');
 	});
 	
-}(document, window, jQuery));
+})(document, window, jQuery);
