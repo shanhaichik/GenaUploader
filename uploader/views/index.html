@@ -7,6 +7,7 @@
     <link  href="/css/index.css" rel="stylesheet"  media="all">
     
     <script src="/js/jquery-1.11.3.min.js"></script>
+    <script src="http://estp-sro.ru/local/libs/vendor/es5shim/es5-shim.min.js"></script>
     <script src="/js/bundle.js"></script>
     
 </head>
@@ -20,6 +21,7 @@
 					<li><input type="file" id="{{id}}"></li>
 					<li>Немного импровизации!</li>
 				</ul>
+				<div  class="gfu-progress"></div>
 			</div>
 		</template>
 		
@@ -29,9 +31,9 @@
 				name: 'component1',
 				text: 'Добавить документы',
 				acceptExtension: ['jpg', 'txt','gif'],
-				acceptType: ['image/jpeg'],
-				maxFiles: 3
-				
+				//acceptType: ['image/jpeg'],
+				maxFiles: 3,
+				url: '/upload'
 			})
 		</script>
 	</gena-upload>
@@ -42,11 +44,16 @@
 			GU.extend({
 				id:'t2',
 				name: 'component2',
-				multiple: false,
-				maxFiles: 3
+				url: '/upload',
+				autoStart: false
 			})
 		</script>
 	</gena-upload>
+	
+	<hr/>
+	<button data-gfu-btn="t2">Отдать швартовые!</button>
+	<div class="gfu-progress-box"></div>
+	
 	
 
 </body>

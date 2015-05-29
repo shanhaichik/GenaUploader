@@ -1,5 +1,8 @@
 var express = require('express');
 var swig = require('swig');
+var bodyParser     = require('body-parser');
+var morgan         = require('morgan');
+var multer  = require('multer');
 var app = express();
 
 var config = require('./core/conf');
@@ -26,8 +29,14 @@ swig.setDefaults({
 	cache: false
 });
 
-app.use(express.static(__dirname + '/public'));
+app.use(morgan('dev'));
+app.use(bodyParser.urlencoded({ extended: false }));
+app.use(bodyParser.json());
 
+app.use(multer({ dest: './uploads/'}));
+
+app.use(express.static(__dirname + '/public'));
+ 
 
 /* ======== API ======== */
 
@@ -38,7 +47,11 @@ app.get('/', function (req, res) {
 
 // upload page
 app.post('/upload', function (req, res) {
-	console.log(req);
+	if (!req.files) {
+		 res.sendStatus(400);
+	} else {
+		res.send(req.files)
+	}
 });
 
 app.listen(config.server.port, function () {

@@ -1,3 +1,67 @@
+/**
+ * Прокладка для "исправления" отсутствия поддержки в IE < 9 применения slice
+ * к хост-объектам вроде NamedNodeMap, NodeList и HTMLCollection
+ * (технически, поскольку хост-объекты зависят от реализации,
+ * по крайней мере, до ES6, IE не обязан так работать).
+ * Также работает для строк, исправляет поведение IE < 9, позволяя явно указывать undefined
+ * вторым аргументом (как в Firefox), и предотвращает ошибки, возникающие при
+ * вызове на других объектах DOM.
+ */
+(function () {
+  'use strict';
+  var _slice = Array.prototype.slice;
+
+  try {
+    // Не может использоваться с элементами DOM в IE < 9
+    _slice.call(document.documentElement);
+  } catch (e) { // В IE < 9 кидается исключение
+    // Функция будет работать для истинных массивов, массивоподобных объектов,
+    // NamedNodeMap (атрибуты, сущности, примечания),
+    // NodeList (например, getElementsByTagName), HTMLCollection (например, childNodes)
+    // и не будет падать на других объектах DOM (как это происходит на элементах DOM в IE < 9)
+    Array.prototype.slice = function(begin, end) {
+      // IE < 9 будет недоволен аргументом end, равным undefined
+      end = (typeof end !== 'undefined') ? end : this.length;
+
+      // Для родных объектов Array мы используем родную функцию slice
+      if (Object.prototype.toString.call(this) === '[object Array]') {
+        return _slice.call(this, begin, end); 
+      }
+
+      // Массивоподобные объекты мы обрабатываем самостоятельно
+      var i, cloned = [],
+          size, len = this.length;
+
+      // Обрабатываем отрицательное значение begin
+      var start = begin || 0;
+      start = (start >= 0) ? start: len + start;
+
+      // Обрабатываем отрицательное значение end
+      var upTo = (end) ? end : len;
+      if (end < 0) {
+        upTo = len + end;
+      }
+
+      // Фактически ожидаемый размер среза
+      size = upTo - start;
+
+      if (size > 0) {
+        cloned = new Array(size);
+        if (this.charAt) {
+          for (i = 0; i < size; i++) {
+            cloned[i] = this.charAt(start + i);
+          }
+        } else {
+          for (i = 0; i < size; i++) {
+            cloned[i] = this[start + i];
+          }
+        }
+      }
+
+      return cloned;
+    };
+  }
+}());
 (function (document, window, $) {
 	'use strict';
 
@@ -53,7 +117,7 @@
             var support = {};
 
             // Whether the browser supports uploading files with XMLHttpRequest
-            support.xhrUpload = !!window.XMLHttpRequest && 'upload' in new XMLHttpRequest();
+            support.xhrUpload = !!window.FormData && !!window.XMLHttpRequest && 'upload' in new XMLHttpRequest();
 
             // Whether the browser supports selecting multiple files at once
             support.selectMultiple = !!window.FileList && 'multiple' in document.createElement('input');
@@ -75,12 +139,6 @@
 		},
 		set: function (id, component) {
 			this._store[id] = component;
-		},
-		remove: function (id) {
-			
-		},
-		getAll: function () {
-			return this._store;
 		}
 	};
 	
@@ -90,7 +148,10 @@
 	 *
 	 * @param options
 	 */
-	var XHR = function() {};
+	var XHR = function() {
+		this.filesQueue = [];
+		return this;
+	};
 		
 	$.extend(XHR.prototype, {
 		getXHR: function () {
@@ -105,7 +166,70 @@
 			}
 		},
 		
-		getIframe: function() {}
+		getIframe: function () {},
+		
+		createQueue: function(fileData) {
+			this.filesQueue.push(fileData);	
+		},
+		
+		send: function () {
+			var self = this,
+				xhr  = this.getXHR(),
+				data = this.filesQueue.shift();
+				
+			if(!data) {
+				xhr = null;
+				return
+			}
+		
+			xhr.upload.onprogress =  function (e) {
+				 var percent = 0, 
+					 position = e.loaded || e.position, 
+					 total = e.total || e.totalFileSize;
+				
+				if (data.progress && e.lengthComputable) {
+					percent = Math.ceil(position / total * 100);
+                    //progress.animate({'width': percent + '%'}, 200);
+					data.progress.text(percent + '%');
+				}
+			}
+			
+			xhr.onreadystatechange = function () {
+				if(this.readyState == 4) {
+					if(this.status == 200) {
+						try {
+							data.cb(JSON.parse(this.response), data.progress);
+						} catch (e) {
+							var res = {
+								status: 'Ошибка обработки ответа',
+								data: 'Ответ сервера: ['+this.responseText+']'
+							}
+						}
+						
+						self.send();
+					} else {
+						var res = {
+							status: 'Ошибка ответа сервера',
+							code: this.status,
+							data: 'Ответ сервера: ['+this.responseText+']'
+						}
+					}
+				}
+			}
+			
+			xhr.open('POST', data.opt.url, true);
+			
+			// prepend and send data
+			if (_support.xhrUpload) {
+				var fd = new FormData();
+
+				fd.append(data.opt.name, data.file);
+				// send data
+				xhr.send(fd);
+			} else {
+				xhr.send(data.file);
+			}
+		}
 	});
 	
 	/**
@@ -114,7 +238,8 @@
 	 * @param options
 	 */
 	var GU = window.GU = function (row, id) {
-		this.$file = row.find('input[type=file]');
+		this.$row = row;
+		this.$file = this.$row.find('input[type=file]');
 		this.options = store.get(id);
 		
 		if (!this.options) {
@@ -133,11 +258,12 @@
 		}
 		
 		// set label text
-		row.find('.gfu-text').text(this.options.text);
+		this.$row.find('.gfu-text').text(this.options.text);
 		
 		// define queue props
 		this.fileArr = [];
-		this.progress = false;
+		this.counter = 0;
+		this.processCount = 0;
 		
 		// set event handler
 		this.$file.on('change.gfu', $.proxy(this.addFiles, this));
@@ -182,6 +308,9 @@
 
 			// Array of the accepted file types, ex. ['jpg', 'jpeg', 'png'] (by default all types are accepted)
 			acceptExtension: null,
+			
+			// Place where put progress bar. Class .gfu-progress-box
+			progressBox: false,
 
 			// Additional data to send with the files
 			data: {},
@@ -207,7 +336,7 @@
 			// Error messages
 			errors: {
 				maxFiles: 'Превышенно колличесво файлов {{maxFiles}} возможных для загрузки!',
-				maxFilesSelect: 'Выбрано {{fileCount}} файлов из {{maxFiles}} возможных',
+				maxFilesSelect: 'Можно выбрать еще {{fileCount}} файл/файлов',
 				maxSize: 'Размер файла {{fileName}} превысил максимальный размер {{maxSize}} Mb',
 				invalidType: 'Неверный тип файла {{fileName}}. Для загрузки разрешены: {{fileType}}',
 				invalidExtension: 'Неверное расширение файла {{fileName}}. Разрешены следующие: {{fileExtension}}'
@@ -215,13 +344,11 @@
 		},
 		// default templates
 		templates: {
-			input: ['<div class="gfu-wrap">',
-						'<label for="{{id}}" class="file-label"><span class="gfu-text"></span><input type="file" id="{{id}}"></label>',											'</div>'
-				   ].join(''),
+			input: ['<div class="gfu-wrap">','<label for="{{id}}" class="file-label"><span class="gfu-text"></span><input type="file" id="{{id}}"></label>','</div>'].join(''),
 			
-			progress: ['<div class="gfu-row"><div class="gfu-row-progress"></div></div>'].join(''),
+			progress: ['<div class="gfu-row-progress"><div class="gfu-progress-state"> прогресс</div></div>'].join(''),
 		
-			success: ['<div class="upload">Загружен файл </div>'].join('')
+			success: ['<div class="upload" data=gfu-id="{{id}}">Загружен файл </div>'].join('')
 		},
 		// extend custom options from component
 		extend: function(obj) {
@@ -241,8 +368,8 @@
 				return;
 			}
 			
-			var files = Array.prototype.slice.apply(e.target.files);
-			
+			var files = slice.apply(e.target.files);
+
 			try {
 				this.validate(files);
 			} catch (err) {
@@ -252,18 +379,9 @@
 			}
 			
 			this.fileArr = this.fileArr.concat(files);
-
-			if (this.fileArr.length === this.options.maxFiles) {
-				this.$file.prop('disabled', true);
-				// TODO стили блокировки для label
-			}
-			
-			if (this.options.autoStart || !this.progress) { //!?
-				// отправляем файлы
-				// this.$file.prop('disabled', true);
-				// this.fileGoAway();
-				// e.target.value = null;
-			}
+		
+			this.fileGoAway();
+			e.target.value = null;
 		},
 		/*
          * Validate files
@@ -274,21 +392,30 @@
 		validate: function(files) {
 			var fLength = files.length,
 				o = this.options,
-				fCount = this.fileArr.length + fLength;
+				fCount = this.counter + fLength;
 			
 			if(o.maxFiles !== null && o.maxFiles < fLength) {
 				throw new Error(_h.template(o.errors.maxFiles, o.maxFiles));
 			}
 			
 			if(o.maxFiles !== null && o.maxFiles < fCount) {
-				var total = o.maxFiles - this.fileArr.length;
-				throw new Error(_h.template(o.errors.maxFilesSelect, {maxFiles:o.maxFiles, fileCount: total.toString()}));
+				var total = o.maxFiles - this.counter;
+				var err = _h.template(o.errors.maxFilesSelect, {
+					fileCount: total.toString()
+				});
+				
+				throw new Error(err);
 			}
 			
 			[].forEach.call(files, function(file) {
 				// validate size
 				if (o.maxSize !== null && ((file.size / 1024) / 1024 > o.maxSize)) {
-					throw new Error(_h.template(o.errors.maxSize, {fileName: file.name, maxSize: o.maxSize.toString()}));
+					var err = _h.template(o.errors.maxSize, {
+						fileName: file.name, 
+						maxSize: o.maxSize.toString()
+					});
+					
+					throw new Error(err);
 				}
 				
 				// validate type
@@ -313,7 +440,9 @@
 						
 					throw new Error(err);
 				}
-			});
+				
+				this.counter++;
+			}.bind(this));
 		},
 		
 		/*
@@ -322,13 +451,70 @@
          * @method fileGoAway
          */
 		fileGoAway: function () {
+			var xhr = new XHR(), $progressBox, sendFile;
+			
+			// get place for append progress bar
+			$progressBox = this.getProgressPlace();
+			
+			while(sendFile = this.fileArr.shift()) {
+				xhr.createQueue(
+					{
+						file: sendFile, 
+						opt: this.options, 
+						progress: $(GU.templates.progress).appendTo($progressBox), 
+						cb: this.fileUpload.bind(this)
+					}
+				);
+				
+				this.processCount++;
+			}
+			
+			if (this.options.autoStart) {
+				this.$file.prop('disabled', true);
+				xhr.send();
+			} else {
+				var $button = $(document.body).find('[data-gfu-btn='+this.options.id+']');
+				
+				if($button.length) {
+					$button.on('click.gfu.send', function(e) {
+						if(e) e.preventDefault();
+						
+						this.$file.prop('disabled', true);
+						xhr.send();
+					}.bind(this));
+				}
+			}
+		},
+		/*
+         * Prepare and send files
+         *
+         * @method getProgressPlace
+		 * @return DOM object
+         */
+		getProgressPlace: function() {
+			if (this.options.progressBox) return $(document).find('.gfu-progress-box');
+				
+			var $progressBox = this.$row.find('.gfu-progress');
+			return ($progressBox.length) ? $progressBox	: this.$row;
+		},
 		
+		fileUpload: function(res, progressBar) {
+			progressBar.replaceWith(GU.templates.success);
+
+			if(!!--this.processCount) return;
+
+			if (this.options.maxFiles === null || this.counter < this.options.maxFiles) {
+				this.$file.prop('disabled', false);
+			}
+			
+			
+			// Calback все файлы загружены
+			
 		}
 	});
 	
 	
 	$(document).ready(function () {
-		console.time('d');
 		var components = document.querySelectorAll('gena-upload');
 		
 		[].forEach.call(components, function (component) {
@@ -346,7 +532,6 @@
 			
 			template = null;
 		});
-		console.timeEnd('d');
 	});
 	
 })(document, window, jQuery);
