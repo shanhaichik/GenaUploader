@@ -45,6 +45,9 @@ app.get('/', function (req, res) {
 	res.render('index',{db:db});
 });
 
+app.post('/', function (req, res) {
+	res.sendStatus(404);
+});
 // upload page
 app.post('/upload', function (req, res) {
 	if (!req.files) {

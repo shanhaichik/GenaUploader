@@ -7,53 +7,103 @@
     <link  href="/css/index.css" rel="stylesheet"  media="all">
     
     <script src="/js/jquery-1.11.3.min.js"></script>
-    <script src="http://estp-sro.ru/local/libs/vendor/es5shim/es5-shim.min.js"></script>
     <script src="/js/bundle.js"></script>
+    <script>
+	 $.extend(GU.defaults, {
+	 	url: '/upload'
+	 })
+	</script>
     
 </head>
 <body>
-	
-	<gena-upload id="t1">
-		<template data-rel="input">
-			<div class="gfu-wrap">
-				<ul>
-					<li class="gfu-text"></li>
-					<li><input type="file" id="{{id}}"></li>
-					<li>Немного импровизации!</li>
-				</ul>
-				<div  class="gfu-progress"></div>
-			</div>
-		</template>
-		
-		<script>
-			GU.extend({
-				id:'t1',
-				name: 'component1',
-				text: 'Добавить документы',
-				acceptExtension: ['jpg', 'txt','gif'],
-				//acceptType: ['image/jpeg'],
-				maxFiles: 3,
-				url: '/upload'
-			})
-		</script>
-	</gena-upload>
-	
 
-	<gena-upload id="t2">
-		<script>
-			GU.extend({
-				id:'t2',
-				name: 'component2',
-				url: '/upload',
-				autoStart: false
-			})
-		</script>
-	</gena-upload>
-	
-	<hr/>
-	<button data-gfu-btn="t2">Отдать швартовые!</button>
-	<div class="gfu-progress-box"></div>
-	
+	<header class="header">
+		<h1 class="header__h1 ">
+			GENAUPLOADER
+		</h1>
+		<div class="header__desc">jQuery file uploader plugin</div>
+	</header>
+		
+	<main>
+		<section class="section">
+			<header class="section__header">
+				<h3 class="l-content">A simple call</h3>
+			</header>
+			<div class="l-content section__body">
+				<!-- Uploader -->
+				<gena-upload id="t0"></gena-upload>
+				<!-- / Uploader -->
+				
+			</div>
+		</section>
+		
+		
+		<section class="section">
+			<header class="section__header">
+				<h3 class="l-content">Call with params</h3>
+			</header>
+			<div class="l-content section__body">
+				<!-- Uploader -->
+				<gena-upload id="t2">
+					<script>
+						GU.extend({
+							id:'t2',
+							name: 'component2',
+							text: 'Добавить документы',
+							maxFiles: 3
+						})
+					</script>
+				</gena-upload>
+				<!-- / Uploader -->
+				
+			</div>
+		</section>
+		
+		<section class="section">
+			<header class="section__header">
+				<h3 class="l-content">Call with params and template</h3>
+			</header>
+			<div class="l-content section__body">
+				<!-- Uploader -->
+				<gena-upload id="t1">
+					<template data-rel="input">
+						<div class="gfu-wrap test-input">
+							<ul>
+								<li class="gfu-text"></li>
+								<li><input type="file" id="{{id}}"></li>
+								<li>Немного импровизации!</li>
+							</ul>
+							<div  class="gfu-progress"></div>
+						</div>
+					</template>
+
+					<script>
+						GU.extend({
+							id:'t1',
+							name: 'component1',
+							//acceptExtension: ['jpg', 'txt','gif'],
+							maxFiles: 3,
+							progressBox: true,
+							autoStart: false,
+							headers: {
+								ddd:'ssss',
+								wwww:'worls'
+							},
+							data: {
+								param1:'hello',
+								param2: 'world'
+							}
+						})
+					</script>
+				</gena-upload>
+				<!-- / Uploader -->
+					
+				<button data-gfu-btn="t1">Отдать швартовые!</button>
+				<div class="gfu-progress-box test-box"></div>
+			</div>
+		</section>
+	</main>
+
 	
 
 </body>

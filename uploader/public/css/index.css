@@ -4,3 +4,132 @@ html, body {
 	margin: 0;
 	padding: 0;
 }
+
+
+body {
+	background-color: #CE4D27;
+	font-family: 'Lato', sans-serif;
+	color: #fff;
+}
+
+.header {
+
+}
+
+.header__h1 {
+	font-size: 70px;
+	font-weight: 100;
+	text-align: center;
+	margin-bottom: 15px;
+}
+.header__desc {
+	text-align: center;
+	font-size: 35px;
+	font-weight: 500;
+}
+
+.l-content {
+	max-width: 1280px;
+	width: 100%;
+	margin: 0 auto;
+}
+
+.section {
+	min-height: 150px;
+	margin-bottom: 50px;
+
+}
+
+.section__body {
+	padding: 25px 30px;
+	clear: both;
+}
+.section__header {
+	border-bottom: 2px dashed #fff;
+}
+.test-box {
+	width: 450px;
+	float: right;
+}
+
+.test-input {
+	width: 400px;
+	float: left;
+}
+
+/*
+* Uploader
+*/
+
+
+/* Progress bar */
+.gfu-row-progress {
+	width: 100%;
+	height: 50px;
+	position: relative;
+
+	font-size: 12px;
+	
+	background-color: #fff;
+	border:1px solid #d4d4d4;
+	
+	clear: both;
+}
+.gfu-progress-state {
+	position: absolute;
+	width: 0;
+	height: inherit;
+	
+	background: #ECEFF6 none 0 0 no-repeat;
+	
+	border-right: 2px solid #536DA4;
+	z-index: 0;
+}
+
+.gfu-progress-info {
+	position: relative;
+	list-style: none;
+	float: left;
+	
+	z-index: 1;
+}
+.gfu-progress-name {
+	color: #333333;
+}
+
+.gfu-progress-size {
+	color: #B6B6B6;
+}
+
+.gfu-progress-del {
+	position: relative;
+	float: right;
+	margin:12px 25px 0 0;
+	
+	text-decoration: none;
+	color: darkred;
+	outline: none;
+	
+	z-index: 1;
+}
+
+.gfu-progress-del:hover {
+	border-bottom: 1px dotted darkred;
+}
+
+.gfu-input {
+	position: absolute;
+	top: -100%;
+	right: -100%;
+}
+.gfu-label {
+	padding: 10px;
+	position: relative;
+	overflow: hidden;
+	background-color: #536DA4;
+	color: #fff;
+	display: inline-block;
+}
+.gfu-label.off {
+	opacity: 0.5;
+}

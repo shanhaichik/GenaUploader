@@ -9,7 +9,6 @@
 
 	// Helpers
 	var _h = {
-		noop: function () {},
 		isUndefined: function (arg) {return arg === void 0; },
 		isFunction: function (x) {return toString.call(x) === '[object Function]'; },
 		isObject: function (x) {return typeof x === 'object' && x !== null; },
@@ -20,10 +19,10 @@
 	_h.template = function (template, data) {
         return template.replace(/\{{([\w\.]*)\}}/g, function (str, key) {
             var keys = key.split("."), value = data[keys.shift()] || data;
-            $.each(keys, function () {
+            [].forEach.call(keys, function () {
                 value = value[this];
             });
-            return (value === null || value === undefined) ? "" : ($.isArray(value) ? value.join('') : value);
+            return (value === null || value === undefined) ? "" : (_h.isArray(value) ? value.join('') : value);
         });
     };
 	
@@ -77,8 +76,7 @@
 			this._store[id] = component;
 		}
 	};
-	
-	
+		
 	/**
 	 * Create XHR class
 	 *
@@ -112,24 +110,28 @@
 			var self = this,
 				xhr  = this.getXHR(),
 				data = this.filesQueue.shift();
-				
+			
 			if(!data) {
 				xhr = null;
 				return
 			}
-		
+			
+			var $btnAbort = data.progress.find('.gfu-progress-del'),
+				$progressState = data.progress.find('.gfu-progress-state');
+			
 			xhr.upload.onprogress =  function (e) {
 				 var percent = 0, 
 					 position = e.loaded || e.position, 
 					 total = e.total || e.totalFileSize;
 				
-				if (data.progress && e.lengthComputable) {
-					percent = Math.ceil(position / total * 100);
-                    //progress.animate({'width': percent + '%'}, 200);
-					data.progress.text(percent + '%');
+				if (e.lengthComputable) {
+					if($progressState.length) {
+						percent = Math.ceil(position / total * 100);
+						$progressState.css('width', percent + '%');
+					}
 				}
 			}
-			
+			// TODO error callback 404
 			xhr.onreadystatechange = function () {
 				if(this.readyState == 4) {
 					if(this.status == 200) {
@@ -142,6 +144,7 @@
 							}
 						}
 						
+						$progressState = $btnAbort = null;
 						self.send();
 					} else {
 						var res = {
@@ -155,15 +158,48 @@
 			
 			xhr.open('POST', data.opt.url, true);
 			
+			// set ajax headers
+			xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+			
+			// set custom headers
+			if(data.opt.headers !== null) {
+				for(var header in data.opt.headers) {
+					if(_h.oHas(data.opt.headers, header)) {
+						xhr.setRequestHeader(header, data.opt.headers[header]);
+					}
+				}
+			}
+			
 			// prepend and send data
 			if (_support.xhrUpload) {
 				var fd = new FormData();
 
 				fd.append(data.opt.name, data.file);
+				
+				if(data.opt.data !== null) {
+					for(var key in data.opt.data) {
+						if(_h.oHas(data.opt.data, key)) {
+							fd.append(key, data.opt.data[key]);
+						}
+					}	
+				}
 				// send data
 				xhr.send(fd);
 			} else {
 				xhr.send(data.file);
+			}
+			
+			// add abort event handler
+			if($btnAbort.length) {
+				$btnAbort.on('click.gfu.abort', function(e) {
+					if(e) e.preventDefault();
+
+					xhr.abort();
+					data.cb();
+						
+					if(self.filesQueue.length) self.send();
+					data.progress.remove();
+				});
 			}
 		}
 	});
@@ -186,7 +222,8 @@
 		this.$file.attr({
             id: this.options.id,         
             disabled: this.options.disabled,
-			name: this.options.name
+			name: this.options.name,
+			required: this.options.required
         });
 		// !?
 		if (_support.selectMultiple) {
@@ -201,8 +238,13 @@
 		this.counter = 0;
 		this.processCount = 0;
 		
+		// add xhr 
+		this.xhr = new XHR();
+		
 		// set event handler
 		this.$file.on('change.gfu', $.proxy(this.addFiles, this));
+		// init upload buttons
+		if(this.options.progressBox) this.initBtns();
 	};
 	
 	/**
@@ -237,7 +279,7 @@
 			autoStart: true,
 
 			// Required field in the form (by default required)
-			required: true,
+			required: false,
 
 			// Array of the accepted file types, ex. ['application/x-cd-image'] (by default all types are accepted)
 			acceptType: null,
@@ -249,10 +291,10 @@
 			progressBox: false,
 
 			// Additional data to send with the files
-			data: {},
+			data: null,
 
 			// Additional headers to send with the files (only for ajax uploads)
-			headers: {},
+			headers: null,
 
 			// Upload success callback
 			success: function () {},
@@ -266,9 +308,6 @@
 			// The url to remove the files
 			removeUrl: null,
 
-			// Enable EDS functional
-			eds: false,
-
 			// Error messages
 			errors: {
 				maxFiles: 'Превышенно колличесво файлов {{maxFiles}} возможных для загрузки!',
@@ -280,11 +319,21 @@
 		},
 		// default templates
 		templates: {
-			input: ['<div class="gfu-wrap">','<label for="{{id}}" class="file-label"><span class="gfu-text"></span><input type="file" id="{{id}}"></label>','</div>'].join(''),
+			input: ['<div class="gfu-wrap">',
+						'<label for="{{id}}" class="gfu-label">',
+							'<span class="gfu-text"></span>',
+							'<input type="file" id="{{id}}" class="gfu-input">',
+						'</label>',
+					'</div>'].join(''),
 			
-			progress: ['<div class="gfu-row-progress"><div class="gfu-progress-state"> прогресс</div></div>'].join(''),
-		
-			success: ['<div class="upload" data=gfu-id="{{id}}">Загружен файл </div>'].join('')
+			progress: ['<div class="gfu-row-progress">',
+							'<ul class="gfu-progress-info">',
+								'<li class="gfu-progress-name">{{name}}</li>',
+								'<li class="gfu-progress-size">{{size}} Mb</li>',
+							'</ul>',
+							'<a href="#" class="gfu-progress-del">отменить</a>',
+							'<div class="gfu-progress-state"></div>',
+						'</div>'].join('')
 		},
 		// extend custom options from component
 		extend: function(obj) {
@@ -293,6 +342,26 @@
 	});
 	
 	$.extend(GU.prototype, {
+		/*
+         * Add buttons event handler
+         *
+         * @method init
+         */
+		initBtns: function() {
+			var $button = $(document.body).find('[data-gfu-btn='+this.options.id+']');
+				
+			if($button.length) {
+				$button.on('click.gfu.send', function(e) {
+					if(e) e.preventDefault();
+					
+					if(this.processCount > 0) {
+						this.$file.prop('disabled', true);
+						this.$file.parent('label').addClass('off');
+						this.xhr.send();
+					}
+				}.bind(this));
+			}
+		},
 		/*
          * Add input files in upload queue
          *
@@ -387,38 +456,34 @@
          * @method fileGoAway
          */
 		fileGoAway: function () {
-			var xhr = new XHR(), $progressBox, sendFile;
+			var $progressBox, sendFile;
 			
 			// get place for append progress bar
 			$progressBox = this.getProgressPlace();
 			
 			while(sendFile = this.fileArr.shift()) {
-				xhr.createQueue(
+				var $progress = _h.template(GU.templates.progress, {
+					name: sendFile.name,
+					size: Math.ceil((sendFile.size / 1024) / 1024)
+				});
+				
+				this.xhr.createQueue(
 					{
 						file: sendFile, 
 						opt: this.options, 
-						progress: $(GU.templates.progress).appendTo($progressBox), 
+						progress: $($progress).appendTo($progressBox), 
 						cb: this.fileUpload.bind(this)
 					}
 				);
 				
 				this.processCount++;
+				$progress = null;
 			}
 			
 			if (this.options.autoStart) {
 				this.$file.prop('disabled', true);
-				xhr.send();
-			} else {
-				var $button = $(document.body).find('[data-gfu-btn='+this.options.id+']');
-				
-				if($button.length) {
-					$button.on('click.gfu.send', function(e) {
-						if(e) e.preventDefault();
-						
-						this.$file.prop('disabled', true);
-						xhr.send();
-					}.bind(this));
-				}
+				this.$file.parent('label').addClass('off');
+				this.xhr.send();
 			}
 		},
 		/*
@@ -428,6 +493,7 @@
 		 * @return DOM object
          */
 		getProgressPlace: function() {
+			//TODO реорганизовать
 			if (this.options.progressBox) return $(document).find('.gfu-progress-box');
 				
 			var $progressBox = this.$row.find('.gfu-progress');
@@ -435,17 +501,33 @@
 		},
 		
 		fileUpload: function(res, progressBar) {
-			progressBar.replaceWith(GU.templates.success);
+			if(progressBar !== undefined) {
+				var $deleteBtn = progressBar.find('.gfu-progress-del');
+				//!& 
+				if($deleteBtn.length) {
+					$deleteBtn
+						.off('click.gfu.abort')
+						.text('удалить')
+						.on('click.gfu.delete', function(e) {
+							if(e) e.preventDefault();
+							// update counter for undisabled input
+							this.counter--;
+							this.$file.prop('disabled', false);
+							this.$file.parent('label').removeClass('off');
+						
+							progressBar.remove();						
+						}.bind(this));
+				}
+			}
 
 			if(!!--this.processCount) return;
 
 			if (this.options.maxFiles === null || this.counter < this.options.maxFiles) {
 				this.$file.prop('disabled', false);
+				this.$file.parent().removeClass('off');
 			}
 			
-			
 			// Calback все файлы загружены
-			
 		}
 	});
 	
