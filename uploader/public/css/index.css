@@ -129,6 +129,8 @@ body {
 	background-color: #536DA4;
 	color: #fff;
 	display: inline-block;
+	*display:inline;
+	*zoom:1;
 }
 .gfu-label.off {
 	opacity: 0.5;

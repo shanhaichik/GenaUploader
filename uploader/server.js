@@ -51,8 +51,10 @@ app.post('/', function (req, res) {
 // upload page
 app.post('/upload', function (req, res) {
 	if (!req.files) {
-		 res.sendStatus(400);
+		 //res.sendStatus(400);
+		res.send({name:'hello'});
 	} else {
+	//	res.header('Content-Type','text/html');
 		res.send(req.files)
 	}
 });

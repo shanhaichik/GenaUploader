@@ -1,29 +1,32 @@
 <!DOCTYPE html>
 <html>
+
 <head lang="en">
-    <meta charset="UTF-8">
-    <title>Uploader</title>
-    
-    <link  href="/css/index.css" rel="stylesheet"  media="all">
-    
-    <script src="/js/jquery-1.11.3.min.js"></script>
-    <script src="/js/bundle.js"></script>
-    <script>
-	 $.extend(GU.defaults, {
-	 	url: '/upload'
-	 })
+	<meta charset="UTF-8">
+	<title>Uploader</title>
+
+	<link href="/css/index.css" rel="stylesheet" media="all">
+
+	<script src="/js/jquery-1.11.3.min.js"></script>
+	<script src="/js/es5-shim.min.js"></script>
+	<script src="/js/bundle.js"></script>
+	<script>
+		$.extend(GU.defaults, {
+			url: '/upload'
+		})
 	</script>
-    
+
 </head>
+
 <body>
 
 	<header class="header">
-		<h1 class="header__h1 ">
+		<h1 class="header__h1">
 			GENAUPLOADER
 		</h1>
 		<div class="header__desc">jQuery file uploader plugin</div>
 	</header>
-		
+
 	<main>
 		<section class="section">
 			<header class="section__header">
@@ -33,11 +36,11 @@
 				<!-- Uploader -->
 				<gena-upload id="t0"></gena-upload>
 				<!-- / Uploader -->
-				
+
 			</div>
 		</section>
-		
-		
+
+
 		<section class="section">
 			<header class="section__header">
 				<h3 class="l-content">Call with params</h3>
@@ -47,7 +50,7 @@
 				<gena-upload id="t2">
 					<script>
 						GU.extend({
-							id:'t2',
+							id: 't2',
 							name: 'component2',
 							text: 'Добавить документы',
 							maxFiles: 3
@@ -55,10 +58,10 @@
 					</script>
 				</gena-upload>
 				<!-- / Uploader -->
-				
+
 			</div>
 		</section>
-		
+
 		<section class="section">
 			<header class="section__header">
 				<h3 class="l-content">Call with params and template</h3>
@@ -70,41 +73,45 @@
 						<div class="gfu-wrap test-input">
 							<ul>
 								<li class="gfu-text"></li>
-								<li><input type="file" id="{{id}}"></li>
+								<li>
+									<input type="file" id="<~id~>" />
+								</li>
 								<li>Немного импровизации!</li>
 							</ul>
-							<div  class="gfu-progress"></div>
+							<div class="gfu-progress"></div>
 						</div>
 					</template>
 
 					<script>
 						GU.extend({
-							id:'t1',
+							id: 't1',
 							name: 'component1',
+							text: 'А я сам по себе',
 							//acceptExtension: ['jpg', 'txt','gif'],
 							maxFiles: 3,
 							progressBox: true,
 							autoStart: false,
 							headers: {
-								ddd:'ssss',
-								wwww:'worls'
+								ddd: 'ssss',
+								wwww: 'worls'
 							},
 							data: {
-								param1:'hello',
+								param1: 'hello',
 								param2: 'world'
 							}
 						})
 					</script>
 				</gena-upload>
 				<!-- / Uploader -->
-					
+
 				<button data-gfu-btn="t1">Отдать швартовые!</button>
 				<div class="gfu-progress-box test-box"></div>
 			</div>
 		</section>
 	</main>
 
-	
+
 
 </body>
+
 </html>
